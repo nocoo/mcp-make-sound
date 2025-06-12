@@ -7,7 +7,7 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'child_process';
-import { statSync } from 'node:fs';
+import { stat } from 'node:fs/promises';
 import { isAbsolute } from 'node:path';
 
 type SystemSound = { type: 'system'; name: string };
@@ -20,6 +20,19 @@ const ALLOWED_SYSTEM_SOUNDS = new Set([
   'Basso', 'Blow', 'Bottle', 'Frog', 'Funk', 'Glass', 'Hero', 'Morse',
   'Ping', 'Pop', 'Purr', 'Sosumi', 'Submarine', 'Tink'
 ]);
+
+const ALLOWED_TTS_VOICES = new Set([
+  // Popular English voices
+  'Albert', 'Alice', 'Bad News', 'Bahh', 'Bells', 'Boing', 'Bruce', 'Bubbles',
+  'Cellos', 'Daniel', 'Deranged', 'Fred', 'Good News', 'Hysterical', 'Junior',
+  'Kathy', 'Pipe Organ', 'Princess', 'Ralph', 'Trinoids', 'Whisper', 'Zarvox',
+  // International voices (commonly available)
+  'Anna', 'Amélie', 'Daria', 'Eddy', 'Fiona', 'Jorge', 'Juan', 'Luca',
+  'Marie', 'Moira', 'Nora', 'Rishi', 'Samantha', 'Serena', 'Tessa', 'Thomas',
+  'Veena', 'Victoria', 'Xander', 'Yelda', 'Zosia'
+]);
+
+const MAX_TTS_TEXT_LENGTH = 1000;
 
 const server = new Server(
   {
@@ -68,7 +81,7 @@ async function playSound(soundType: 'info' | 'warning' | 'error'): Promise<void>
 }
 
 async function playCustomSound(options: PlaySoundOptions): Promise<string> {
-  return new Promise((resolve, reject) => {
+  return new Promise(async (resolve, reject) => {
     let child: ReturnType<typeof spawn>;
     
     switch (options.type) {
@@ -84,7 +97,22 @@ async function playCustomSound(options: PlaySoundOptions): Promise<string> {
         
       case 'tts': {
         const { text, voice } = options;
-        const args = voice ? ['-v', voice, text] : [text];
+        
+        // Validate text length
+        if (text.length > MAX_TTS_TEXT_LENGTH) {
+          reject(new Error(`Text too long (max ${MAX_TTS_TEXT_LENGTH} characters)`));
+          return;
+        }
+        
+        // Validate voice if provided, gracefully fall back to system default
+        let finalVoice = voice;
+        if (voice !== undefined && !ALLOWED_TTS_VOICES.has(voice)) {
+          // Log warning but continue with system default
+          console.warn(`Unsupported voice: ${voice}. Using system default voice.`);
+          finalVoice = undefined;
+        }
+        
+        const args = finalVoice ? ['-v', finalVoice, text] : [text];
         child = spawn('say', args);
         break;
       }
@@ -96,7 +124,7 @@ async function playCustomSound(options: PlaySoundOptions): Promise<string> {
           return;
         }
         try {
-          const stats = statSync(filePath);
+          const stats = await stat(filePath);
           if (!stats.isFile()) {
             reject(new Error('Path must point to a file'));
             return;
@@ -248,7 +276,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
           ],
         };
 
-      case 'play_sound':
+      case 'play_sound': {
         const soundOptions = args as PlaySoundOptions;
         const result = await playCustomSound(soundOptions);
         return {
@@ -259,6 +287,7 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
             },
           ],
         };
+      }
 
       default:
         throw new Error(`Unknown tool: ${name}`);

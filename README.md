@@ -135,8 +135,11 @@ Without voice (uses system default):
 }
 ```
 
-**Popular voices available:**
-`Albert`, `Alice`, `Bad News`, `Bells`, `Boing`, `Bruce`, `Bubbles`, `Cellos`, `Deranged`, `Fred`, `Good News`, `Hysterical`, `Junior`, `Kathy`, `Pipe Organ`, `Princess`, `Ralph`, `Trinoids`, `Whisper`, `Zarvox`
+**Supported voices:**
+- **English**: `Albert`, `Alice`, `Bad News`, `Bahh`, `Bells`, `Boing`, `Bruce`, `Bubbles`, `Cellos`, `Daniel`, `Deranged`, `Fred`, `Good News`, `Hysterical`, `Junior`, `Kathy`, `Pipe Organ`, `Princess`, `Ralph`, `Trinoids`, `Whisper`, `Zarvox`
+- **International**: `Anna`, `Amélie`, `Daria`, `Eddy`, `Fiona`, `Jorge`, `Juan`, `Luca`, `Marie`, `Moira`, `Nora`, `Rishi`, `Samantha`, `Serena`, `Tessa`, `Thomas`, `Veena`, `Victoria`, `Xander`, `Yelda`, `Zosia`
+
+**Note**: If an unsupported voice is specified, the system will gracefully fall back to the default voice and continue playback.
 
 #### Custom Audio Files
 Play audio files from disk:
@@ -152,6 +155,15 @@ Play audio files from disk:
 ```
 
 Supports common audio formats: `.aiff`, `.wav`, `.mp3`, `.m4a`, etc.
+
+### 🔒 Security & Limitations
+
+- **System Sounds**: Only the 14 official macOS sounds are allowed
+- **Text-to-Speech**: 
+  - Text limited to 1000 characters maximum
+  - Voice validation with graceful fallback to system default
+  - Curated list of 43+ supported voices for security
+- **File Playback**: Requires absolute paths and validates file existence
 
 ### 🔗 Integration with MCP Clients
 
