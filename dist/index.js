@@ -41,6 +41,53 @@ async function playSound(soundType) {
         });
     });
 }
+async function playCustomSound(type, options) {
+    return new Promise((resolve, reject) => {
+        let process;
+        switch (type) {
+            case 'system':
+                const soundName = options.name;
+                if (!soundName) {
+                    reject(new Error('Sound name is required for system sounds'));
+                    return;
+                }
+                process = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
+                break;
+            case 'tts':
+                const voice = options.voice;
+                const text = options.text;
+                if (!text) {
+                    reject(new Error('Text is required for text-to-speech'));
+                    return;
+                }
+                const args = voice ? ['-v', voice, text] : [text];
+                process = spawn('say', args);
+                break;
+            case 'file':
+                const filePath = options.path;
+                if (!filePath) {
+                    reject(new Error('File path is required for file sounds'));
+                    return;
+                }
+                process = spawn('afplay', [filePath]);
+                break;
+            default:
+                reject(new Error(`Unknown sound type: ${type}`));
+                return;
+        }
+        process.on('close', (code) => {
+            if (code === 0) {
+                resolve(`${type} sound played successfully`);
+            }
+            else {
+                reject(new Error(`Sound playback failed with code ${code}`));
+            }
+        });
+        process.on('error', (error) => {
+            reject(error);
+        });
+    });
+}
 server.setRequestHandler(ListToolsRequestSchema, async () => {
     return {
         tools: [
@@ -71,11 +118,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
                     required: [],
                 },
             },
+            {
+                name: 'play_sound',
+                description: 'Play various types of sounds with customizable parameters',
+                inputSchema: {
+                    type: 'object',
+                    properties: {
+                        type: {
+                            type: 'string',
+                            enum: ['system', 'tts', 'file'],
+                            description: 'Type of sound to play'
+                        },
+                        name: {
+                            type: 'string',
+                            description: 'For system sounds: sound name (Basso, Blow, Bottle, Frog, Funk, Glass, Hero, Morse, Ping, Pop, Purr, Sosumi, Submarine, Tink)'
+                        },
+                        voice: {
+                            type: 'string',
+                            description: 'For TTS: voice name (Albert, Alice, Bad News, Bells, etc.)'
+                        },
+                        text: {
+                            type: 'string',
+                            description: 'For TTS: text to speak'
+                        },
+                        path: {
+                            type: 'string',
+                            description: 'For file sounds: absolute path to audio file'
+                        }
+                    },
+                    required: ['type'],
+                    additionalProperties: false
+                },
+            },
         ],
     };
 });
 server.setRequestHandler(CallToolRequestSchema, async (request) => {
-    const { name } = request.params;
+    const { name, arguments: args } = request.params;
     try {
         switch (name) {
             case 'play_info_sound':
@@ -105,6 +184,17 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
                         {
                             type: 'text',
                             text: 'Error sound played successfully',
+                        },
+                    ],
+                };
+            case 'play_sound':
+                const { type, ...options } = args;
+                const result = await playCustomSound(type, options);
+                return {
+                    content: [
+                        {
+                            type: 'text',
+                            text: result,
                         },
                     ],
                 };
