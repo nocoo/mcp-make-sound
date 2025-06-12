@@ -52,7 +52,7 @@ npm run dev
 
 Here's how you can set up the MCP sound server to provide audio feedback when AI tasks complete in Warp terminal:
 
-![Warp Terminal Integration](https://cut.lizheng.me/X36m8zzy)
+![Warp Terminal Integration](https://assets.lizheng.me/wp-content/uploads/2025/06/CleanShot-2025-06-12-at-08.12.04.jpeg)
 
 **Configuration Rule:**
 "When AI is done, use mcp-make-sound to play a sound. The MCP supports error, info and success. Play the right sound based on AI task outcome."
