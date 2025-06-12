@@ -1,0 +1,22 @@
+{
+  "name": "mcp-make-sound",
+  "version": "1.0.0",
+  "description": "MCP server for making system sounds on macOS",
+  "main": "dist/index.js",
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsc --watch & node --watch dist/index.js"
+  },
+  "keywords": ["mcp", "sound", "macos", "audio"],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.0.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "typescript": "^5.0.0"
+  }
+}
