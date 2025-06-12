@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides system sound playback capabilities for macOS. This server allows AI assistants and other MCP clients to play different types of system sounds for audio feedback.
 
+<a href="https://glama.ai/mcp/servers/@nocoo/mcp-make-sound">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@nocoo/mcp-make-sound/badge" alt="Make Sound MCP server" />
+</a>
+
 ## ✨ Features
 
 - **🔔 Play Info Sound**: Plays the "Glass" system sound for informational notifications
@@ -156,4 +160,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - **❌ Error**: Sosumi.aiff - A distinctive error sound
 
 These sounds are built into macOS and provide familiar audio feedback to users.
-
