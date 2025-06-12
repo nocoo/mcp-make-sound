@@ -93,3 +93,6 @@ typings/
 logs
 *.log
 
+# Build output
+dist/
+
