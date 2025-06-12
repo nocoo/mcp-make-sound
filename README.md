@@ -5,7 +5,7 @@ A Model Context Protocol (MCP) server that provides comprehensive sound playback
 ## ✨ Features
 
 - **🔔 Simple Sound Methods**: Pre-configured info, warning, and error sounds
-- **🎵 Custom System Sounds**: Play any of the 14 built-in macOS system sounds
+- **🎵 Custom System Sounds**: Play any of the 14 built-in macOS sounds
 - **🗣️ Text-to-Speech**: Convert text to speech with customizable voices
 - **📁 File Playback**: Play custom audio files from disk
 - 🚀 Built with TypeScript and the MCP SDK
@@ -90,12 +90,12 @@ The server provides four tools:
 - **Description**: Play various types of sounds with customizable parameters
 - **Parameters**: 
   - `type` (required): `"system"`, `"tts"`, or `"file"`
-  - Additional parameters based on type (see examples below)
+  - Additional based on type (see examples below)
 
 ### 📖 Usage Examples
 
 #### System Sounds
-Play any of the 14 built-in macOS system sounds:
+Play any of the 14 built-in macOS sounds:
 
 ```json
 {

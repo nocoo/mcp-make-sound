@@ -8,6 +8,12 @@ import {
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'child_process';
 
+type SystemSound = { type: 'system'; name: string };
+type TTSSound = { type: 'tts'; text: string; voice?: string };
+type FileSound = { type: 'file'; path: string };
+
+type PlaySoundOptions = SystemSound | TTSSound | FileSound;
+
 const server = new Server(
   {
     name: 'mcp-make-sound',
@@ -54,54 +60,47 @@ async function playSound(soundType: 'info' | 'warning' | 'error'): Promise<void>
   });
 }
 
-async function playCustomSound(type: string, options: any): Promise<string> {
+async function playCustomSound(options: PlaySoundOptions): Promise<string> {
   return new Promise((resolve, reject) => {
-    let process: any;
+    let child: ReturnType<typeof spawn>;
     
-    switch (type) {
-      case 'system':
-        const soundName = options.name;
-        if (!soundName) {
-          reject(new Error('Sound name is required for system sounds'));
-          return;
-        }
-        process = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
+    switch (options.type) {
+      case 'system': {
+        const { name: soundName } = options;
+        child = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
         break;
+      }
         
-      case 'tts':
-        const voice = options.voice;
-        const text = options.text;
-        if (!text) {
-          reject(new Error('Text is required for text-to-speech'));
-          return;
-        }
+      case 'tts': {
+        const { text, voice } = options;
         const args = voice ? ['-v', voice, text] : [text];
-        process = spawn('say', args);
+        child = spawn('say', args);
         break;
+      }
         
-      case 'file':
-        const filePath = options.path;
-        if (!filePath) {
-          reject(new Error('File path is required for file sounds'));
-          return;
-        }
-        process = spawn('afplay', [filePath]);
+      case 'file': {
+        const { path: filePath } = options;
+        child = spawn('afplay', [filePath]);
         break;
+      }
         
-      default:
-        reject(new Error(`Unknown sound type: ${type}`));
+      default: {
+        // TypeScript ensures this is unreachable, but keep for runtime safety
+        const exhaustiveCheck: never = options;
+        reject(new Error(`Unknown sound type: ${(exhaustiveCheck as any).type}`));
         return;
+      }
     }
     
-    process.on('close', (code: number) => {
+    child.on('close', (code: number) => {
       if (code === 0) {
-        resolve(`${type} sound played successfully`);
+        resolve(`${options.type} sound played successfully`);
       } else {
         reject(new Error(`Sound playback failed with code ${code}`));
       }
     });
     
-    process.on('error', (error: Error) => {
+    child.on('error', (error: Error) => {
       reject(error);
     });
   });
@@ -142,30 +141,43 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         description: 'Play various types of sounds with customizable parameters',
         inputSchema: {
           type: 'object',
-          properties: {
-            type: {
-              type: 'string',
-              enum: ['system', 'tts', 'file'],
-              description: 'Type of sound to play'
+          oneOf: [
+            {
+              required: ['type', 'name'],
+              properties: {
+                type: { const: 'system' },
+                name: {
+                  type: 'string',
+                  enum: ['Basso', 'Blow', 'Bottle', 'Frog', 'Funk', 'Glass', 'Hero', 'Morse', 'Ping', 'Pop', 'Purr', 'Sosumi', 'Submarine', 'Tink'],
+                  description: 'System sound name'
+                }
+              }
             },
-            name: {
-              type: 'string',
-              description: 'For system sounds: sound name (Basso, Blow, Bottle, Frog, Funk, Glass, Hero, Morse, Ping, Pop, Purr, Sosumi, Submarine, Tink)'
+            {
+              required: ['type', 'text'],
+              properties: {
+                type: { const: 'tts' },
+                text: {
+                  type: 'string',
+                  description: 'Text to speak'
+                },
+                voice: {
+                  type: 'string',
+                  description: 'Voice name (optional, uses system default if not specified)'
+                }
+              }
             },
-            voice: {
-              type: 'string',
-              description: 'For TTS: voice name (Albert, Alice, Bad News, Bells, etc.)'
-            },
-            text: {
-              type: 'string',
-              description: 'For TTS: text to speak'
-            },
-            path: {
-              type: 'string',
-              description: 'For file sounds: absolute path to audio file'
+            {
+              required: ['type', 'path'],
+              properties: {
+                type: { const: 'file' },
+                path: {
+                  type: 'string',
+                  description: 'Absolute path to audio file'
+                }
+              }
             }
-          },
-          required: ['type'],
+          ],
           additionalProperties: false
         },
       },
@@ -212,8 +224,8 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
       case 'play_sound':
-        const { type, ...options } = args as any;
-        const result = await playCustomSound(type, options);
+        const soundOptions = args as PlaySoundOptions;
+        const result = await playCustomSound(soundOptions);
         return {
           content: [
             {
