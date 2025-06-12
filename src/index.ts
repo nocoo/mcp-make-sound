@@ -7,12 +7,19 @@ import {
   ListToolsRequestSchema,
 } from '@modelcontextprotocol/sdk/types.js';
 import { spawn } from 'child_process';
+import { statSync } from 'node:fs';
+import { isAbsolute } from 'node:path';
 
 type SystemSound = { type: 'system'; name: string };
 type TTSSound = { type: 'tts'; text: string; voice?: string };
 type FileSound = { type: 'file'; path: string };
 
 type PlaySoundOptions = SystemSound | TTSSound | FileSound;
+
+const ALLOWED_SYSTEM_SOUNDS = new Set([
+  'Basso', 'Blow', 'Bottle', 'Frog', 'Funk', 'Glass', 'Hero', 'Morse',
+  'Ping', 'Pop', 'Purr', 'Sosumi', 'Submarine', 'Tink'
+]);
 
 const server = new Server(
   {
@@ -67,6 +74,10 @@ async function playCustomSound(options: PlaySoundOptions): Promise<string> {
     switch (options.type) {
       case 'system': {
         const { name: soundName } = options;
+        if (!ALLOWED_SYSTEM_SOUNDS.has(soundName)) {
+          reject(new Error(`Unsupported system sound: ${soundName}`));
+          return;
+        }
         child = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
         break;
       }
@@ -80,6 +91,20 @@ async function playCustomSound(options: PlaySoundOptions): Promise<string> {
         
       case 'file': {
         const { path: filePath } = options;
+        if (!isAbsolute(filePath)) {
+          reject(new Error('File path must be absolute'));
+          return;
+        }
+        try {
+          const stats = statSync(filePath);
+          if (!stats.isFile()) {
+            reject(new Error('Path must point to a file'));
+            return;
+          }
+        } catch (error) {
+          reject(new Error(`File not found or inaccessible: ${filePath}`));
+          return;
+        }
         child = spawn('afplay', [filePath]);
         break;
       }
