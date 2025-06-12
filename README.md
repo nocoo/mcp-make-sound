@@ -1,22 +1,22 @@
-# MCP Make Sound
+# 🔊 MCP Make Sound
 
 A Model Context Protocol (MCP) server that provides system sound playback capabilities for macOS. This server allows AI assistants and other MCP clients to play different types of system sounds for audio feedback.
 
-## Features
+## ✨ Features
 
-- **Play Info Sound**: Plays the "Glass" system sound for informational notifications
-- **Play Warning Sound**: Plays the "Purr" system sound for warnings
-- **Play Error Sound**: Plays the "Sosumi" system sound for errors
-- Built with TypeScript and the MCP SDK
-- Lightweight and easy to integrate
+- **🔔 Play Info Sound**: Plays the "Glass" system sound for informational notifications
+- **⚠️ Play Warning Sound**: Plays the "Purr" system sound for warnings
+- **❌ Play Error Sound**: Plays the "Sosumi" system sound for errors
+- 🚀 Built with TypeScript and the MCP SDK
+- 🪶 Lightweight and easy to integrate
 
-## Requirements
+## 📋 Requirements
 
-- macOS (uses `afplay` and system sounds)
-- Node.js 18+ 
-- TypeScript
+- 🍎 macOS (uses `afplay` and system sounds)
+- 🟢 Node.js 18+ 
+- 📝 TypeScript
 
-## Installation
+## 🚀 Installation
 
 1. Clone this repository:
 ```bash
@@ -34,9 +34,9 @@ npm install
 npm run build
 ```
 
-## Usage
+## 💡 Usage
 
-### Running the Server
+### 🎵 Running the Server
 
 Start the MCP server:
 ```bash
@@ -48,7 +48,23 @@ For development with auto-reload:
 npm run dev
 ```
 
-### Available Tools
+### 🎯 Example: Claude Integration with Warp Terminal
+
+Here's how you can set up the MCP sound server to provide audio feedback when AI tasks complete in Warp terminal:
+
+![Warp Terminal Integration](https://cut.lizheng.me/X36m8zzy)
+
+**Configuration Rule:**
+"When AI is done, use mcp-make-sound to play a sound. The MCP supports error, info and success. Play the right sound based on AI task outcome."
+
+This setup allows you to:
+- 🔔 Hear a pleasant chime when tasks complete successfully
+- ⚠️ Get an alert sound for warnings or partial completions  
+- ❌ Receive clear audio feedback for errors or failures
+
+The audio feedback helps you stay focused on other work while knowing immediately when your AI assistant has finished processing your requests.
+
+### 🛠️ Available Tools
 
 The server provides three tools:
 
@@ -67,12 +83,12 @@ The server provides three tools:
 - **Parameters**: None
 - **Sound**: Sosumi.aiff
 
-### Integration with MCP Clients
+### 🔗 Integration with MCP Clients
 
 This server can be integrated with any MCP-compatible client, such as:
-- Claude Desktop
-- Custom MCP clients
-- AI assistants that support MCP
+- 🤖 Claude Desktop
+- 🛠️ Custom MCP clients
+- 🧠 AI assistants that support MCP
 
 Example tool call:
 ```json
@@ -82,9 +98,9 @@ Example tool call:
 }
 ```
 
-## Development
+## 🛠️ Development
 
-### Project Structure
+### 📁 Project Structure
 
 ```
 mcp-make-sound/
@@ -96,13 +112,13 @@ mcp-make-sound/
 └── README.md            # This file
 ```
 
-### Scripts
+### 📜 Scripts
 
-- `npm run build` - Compile TypeScript to JavaScript
-- `npm start` - Run the compiled server
-- `npm run dev` - Development mode with auto-rebuild and restart
+- `npm run build` - 🔨 Compile TypeScript to JavaScript
+- `npm start` - ▶️ Run the compiled server
+- `npm run dev` - 🔄 Development mode with auto-rebuild and restart
 
-### How It Works
+### ⚙️ How It Works
 
 1. The server implements the MCP protocol using the official SDK
 2. It exposes three tools for different sound types
@@ -110,14 +126,14 @@ mcp-make-sound/
 4. Sounds are located in `/System/Library/Sounds/`
 5. The server communicates over stdio transport
 
-## Technical Details
+## 🔧 Technical Details
 
-- **Transport**: Standard I/O (stdio)
-- **Protocol**: Model Context Protocol (MCP)
-- **Audio Backend**: macOS `afplay` command
-- **Sound Files**: System .aiff files
+- **🔌 Transport**: Standard I/O (stdio)
+- **📡 Protocol**: Model Context Protocol (MCP)
+- **🎧 Audio Backend**: macOS `afplay` command
+- **🎵 Sound Files**: System .aiff files
 
-## Error Handling
+## 🚨 Error Handling
 
 The server includes comprehensive error handling:
 - Validates tool names
@@ -125,19 +141,19 @@ The server includes comprehensive error handling:
 - Returns appropriate error messages to clients
 - Graceful server shutdown on errors
 
-## License
+## 📄 License
 
 MIT License
 
-## Contributing
+## 🤝 Contributing
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## System Sounds Used
+## 🎼 System Sounds Used
 
-- **Info**: Glass.aiff - A pleasant chime sound
-- **Warning**: Purr.aiff - A gentle alert sound  
-- **Error**: Sosumi.aiff - A distinctive error sound
+- **🔔 Info**: Glass.aiff - A pleasant chime sound
+- **⚠️ Warning**: Purr.aiff - A gentle alert sound  
+- **❌ Error**: Sosumi.aiff - A distinctive error sound
 
 These sounds are built into macOS and provide familiar audio feedback to users.
 
