@@ -66,7 +66,7 @@ async function playSound(soundType: 'info' | 'warning' | 'error'): Promise<void>
 
     const afplay = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
     
-    afplay.on('close', (code) => {
+    afplay.once('close', (code) => {
       if (code === 0) {
         resolve();
       } else {
@@ -74,78 +74,72 @@ async function playSound(soundType: 'info' | 'warning' | 'error'): Promise<void>
       }
     });
     
-    afplay.on('error', (error) => {
-      reject(error);
-    });
+    afplay.once('error', reject);
   });
 }
 
 async function playCustomSound(options: PlaySoundOptions): Promise<string> {
-  return new Promise(async (resolve, reject) => {
-    let child: ReturnType<typeof spawn>;
-    
-    switch (options.type) {
-      case 'system': {
-        const { name: soundName } = options;
-        if (!ALLOWED_SYSTEM_SOUNDS.has(soundName)) {
-          reject(new Error(`Unsupported system sound: ${soundName}`));
-          return;
-        }
-        child = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
-        break;
+  let child: ReturnType<typeof spawn>;
+  
+  // Validate and spawn process
+  switch (options.type) {
+    case 'system': {
+      const { name: soundName } = options;
+      if (!ALLOWED_SYSTEM_SOUNDS.has(soundName)) {
+        throw new Error(`Unsupported system sound: ${soundName}`);
       }
-        
-      case 'tts': {
-        const { text, voice } = options;
-        
-        // Validate text length
-        if (text.length > MAX_TTS_TEXT_LENGTH) {
-          reject(new Error(`Text too long (max ${MAX_TTS_TEXT_LENGTH} characters)`));
-          return;
-        }
-        
-        // Validate voice if provided, gracefully fall back to system default
-        let finalVoice = voice;
-        if (voice !== undefined && !ALLOWED_TTS_VOICES.has(voice)) {
-          // Log warning but continue with system default
-          console.warn(`Unsupported voice: ${voice}. Using system default voice.`);
-          finalVoice = undefined;
-        }
-        
-        const args = finalVoice ? ['-v', finalVoice, text] : [text];
-        child = spawn('say', args);
-        break;
-      }
-        
-      case 'file': {
-        const { path: filePath } = options;
-        if (!isAbsolute(filePath)) {
-          reject(new Error('File path must be absolute'));
-          return;
-        }
-        try {
-          const stats = await stat(filePath);
-          if (!stats.isFile()) {
-            reject(new Error('Path must point to a file'));
-            return;
-          }
-        } catch (error) {
-          reject(new Error(`File not found or inaccessible: ${filePath}`));
-          return;
-        }
-        child = spawn('afplay', [filePath]);
-        break;
-      }
-        
-      default: {
-        // TypeScript ensures this is unreachable, but keep for runtime safety
-        const exhaustiveCheck: never = options;
-        reject(new Error(`Unknown sound type: ${(exhaustiveCheck as any).type}`));
-        return;
-      }
+      child = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
+      break;
     }
-    
-    child.on('close', (code: number) => {
+      
+    case 'tts': {
+      const { text, voice } = options;
+      
+      // Validate text length
+      if (text.length > MAX_TTS_TEXT_LENGTH) {
+        throw new Error(`Text too long (max ${MAX_TTS_TEXT_LENGTH} characters)`);
+      }
+      
+      // Validate voice if provided, gracefully fall back to system default
+      let finalVoice = voice;
+      if (voice !== undefined && !ALLOWED_TTS_VOICES.has(voice)) {
+        // Log warning but continue with system default
+        console.warn(`Unsupported voice: ${voice}. Using system default voice.`);
+        finalVoice = undefined;
+      }
+      
+      const args = finalVoice ? ['-v', finalVoice, text] : [text];
+      child = spawn('say', args);
+      break;
+    }
+      
+    case 'file': {
+      const { path: filePath } = options;
+      if (!isAbsolute(filePath)) {
+        throw new Error('File path must be absolute');
+      }
+      try {
+        const stats = await stat(filePath);
+        if (!stats.isFile()) {
+          throw new Error('Path must point to a file');
+        }
+      } catch (error) {
+        throw new Error(`File not found or inaccessible: ${filePath}`);
+      }
+      child = spawn('afplay', [filePath]);
+      break;
+    }
+      
+    default: {
+      // TypeScript ensures this is unreachable, but keep for runtime safety
+      const exhaustiveCheck: never = options;
+      throw new Error(`Unknown sound type: ${(exhaustiveCheck as any).type}`);
+    }
+  }
+  
+  // Wrap child process lifecycle in Promise
+  return new Promise((resolve, reject) => {
+    child.once('close', (code: number) => {
       if (code === 0) {
         resolve(`${options.type} sound played successfully`);
       } else {
@@ -153,9 +147,7 @@ async function playCustomSound(options: PlaySoundOptions): Promise<string> {
       }
     });
     
-    child.on('error', (error: Error) => {
-      reject(error);
-    });
+    child.once('error', reject);
   });
 }
 
