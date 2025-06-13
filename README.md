@@ -2,6 +2,10 @@
 
 A Model Context Protocol (MCP) server that provides comprehensive sound playback capabilities for macOS. This server allows AI assistants and other MCP clients to play system sounds, text-to-speech, and custom audio files for rich audio feedback.
 
+<a href="https://glama.ai/mcp/servers/@nocoo/mcp-make-sound">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@nocoo/mcp-make-sound/badge" alt="Make Sound MCP server" />
+</a>
+
 ## ✨ Features
 
 - **🔔 Simple Sound Methods**: Pre-configured info, warning, and error sounds
@@ -288,4 +292,3 @@ Contributions are welcome! Please feel free to submit a Pull Request.
 - **📁 Custom Files**: Support for .aiff, .wav, .mp3, .m4a, and more
 
 These capabilities provide rich audio feedback options for any application need.
-
