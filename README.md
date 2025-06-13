@@ -215,8 +215,12 @@ Example tool calls:
 ```
 mcp-make-sound/
 ├── src/
-│   └── index.ts          # Main server implementation
+│   ├── index.ts          # Main server implementation
+│   └── __tests__/        # Unit tests
+│       └── sound.test.ts # Sound system tests
 ├── dist/                 # Compiled JavaScript output
+├── eslint.config.js      # ESLint configuration
+├── vitest.config.ts      # Vitest test configuration
 ├── package.json          # Project configuration
 ├── tsconfig.json         # TypeScript configuration
 └── README.md            # This file
@@ -224,9 +228,18 @@ mcp-make-sound/
 
 ### 📜 Scripts
 
+#### Build & Run
 - `npm run build` - 🔨 Compile TypeScript to JavaScript
 - `npm start` - ▶️ Run the compiled server
 - `npm run dev` - 🔄 Development mode with auto-rebuild and restart
+- `npm run kill` - 🛑 Stop all running MCP server instances
+
+#### Code Quality & Testing
+- `npm run lint` - 🔍 Check code style and errors
+- `npm run lint:fix` - 🔧 Fix auto-fixable linting issues
+- `npm run test` - 🧪 Run tests in watch mode
+- `npm run test:run` - ✅ Run tests once
+- `npm run test:ui` - 🎛️ Run tests with interactive UI
 
 ### ⚙️ How It Works
 
