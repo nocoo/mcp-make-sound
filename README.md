@@ -1,12 +1,13 @@
 # 🔊 MCP Make Sound
 
-A Model Context Protocol (MCP) server that provides system sound playback capabilities for macOS. This server allows AI assistants and other MCP clients to play different types of system sounds for audio feedback.
+A Model Context Protocol (MCP) server that provides comprehensive sound playback capabilities for macOS. This server allows AI assistants and other MCP clients to play system sounds, text-to-speech, and custom audio files for rich audio feedback.
 
 ## ✨ Features
 
-- **🔔 Play Info Sound**: Plays the "Glass" system sound for informational notifications
-- **⚠️ Play Warning Sound**: Plays the "Purr" system sound for warnings
-- **❌ Play Error Sound**: Plays the "Sosumi" system sound for errors
+- **🔔 Simple Sound Methods**: Pre-configured info, warning, and error sounds
+- **🎵 Custom System Sounds**: Play any of the 14 built-in macOS sounds
+- **🗣️ Text-to-Speech**: Convert text to speech with customizable voices
+- **📁 File Playback**: Play custom audio files from disk
 - 🚀 Built with TypeScript and the MCP SDK
 - 🪶 Lightweight and easy to integrate
 
@@ -52,8 +53,6 @@ npm run dev
 
 Here's how you can set up the MCP sound server to provide audio feedback when AI tasks complete in Warp terminal:
 
-![Warp Terminal Integration](https://assets.lizheng.me/wp-content/uploads/2025/06/CleanShot-2025-06-12-at-08.12.04.jpeg)
-
 **Configuration Rule:**
 "When AI is done, use mcp-make-sound to play a sound. The MCP supports error, info and success. Play the right sound based on AI task outcome."
 
@@ -66,7 +65,9 @@ The audio feedback helps you stay focused on other work while knowing immediatel
 
 ### 🛠️ Available Tools
 
-The server provides three tools:
+The server provides four tools:
+
+#### Simple Sound Methods (Legacy)
 
 #### `play_info_sound`
 - **Description**: Play an informational system sound
@@ -83,6 +84,87 @@ The server provides three tools:
 - **Parameters**: None
 - **Sound**: Sosumi.aiff
 
+#### Advanced Sound Method
+
+#### `play_sound`
+- **Description**: Play various types of sounds with customizable parameters
+- **Parameters**: 
+  - `type` (required): `"system"`, `"tts"`, or `"file"`
+  - Additional based on type (see examples below)
+
+### 📖 Usage Examples
+
+#### System Sounds
+Play any of the 14 built-in macOS sounds:
+
+```json
+{
+  "name": "play_sound",
+  "arguments": {
+    "type": "system",
+    "name": "Basso"
+  }
+}
+```
+
+**Available system sounds:**
+`Basso`, `Blow`, `Bottle`, `Frog`, `Funk`, `Glass`, `Hero`, `Morse`, `Ping`, `Pop`, `Purr`, `Sosumi`, `Submarine`, `Tink`
+
+#### Text-to-Speech
+Convert text to speech with optional voice selection:
+
+```json
+{
+  "name": "play_sound",
+  "arguments": {
+    "type": "tts",
+    "text": "Hello, this is a test message",
+    "voice": "Albert"
+  }
+}
+```
+
+Without voice (uses system default):
+```json
+{
+  "name": "play_sound",
+  "arguments": {
+    "type": "tts",
+    "text": "Task completed successfully"
+  }
+}
+```
+
+**Supported voices:**
+- **English**: `Albert`, `Alice`, `Bad News`, `Bahh`, `Bells`, `Boing`, `Bruce`, `Bubbles`, `Cellos`, `Daniel`, `Deranged`, `Fred`, `Good News`, `Hysterical`, `Junior`, `Kathy`, `Pipe Organ`, `Princess`, `Ralph`, `Trinoids`, `Whisper`, `Zarvox`
+- **International**: `Anna`, `Amélie`, `Daria`, `Eddy`, `Fiona`, `Jorge`, `Juan`, `Luca`, `Marie`, `Moira`, `Nora`, `Rishi`, `Samantha`, `Serena`, `Tessa`, `Thomas`, `Veena`, `Victoria`, `Xander`, `Yelda`, `Zosia`
+
+**Note**: If an unsupported voice is specified, the system will gracefully fall back to the default voice and continue playback.
+
+#### Custom Audio Files
+Play audio files from disk:
+
+```json
+{
+  "name": "play_sound",
+  "arguments": {
+    "type": "file",
+    "path": "/Users/username/Music/notification.mp3"
+  }
+}
+```
+
+Supports common audio formats: `.aiff`, `.wav`, `.mp3`, `.m4a`, etc.
+
+### 🔒 Security & Limitations
+
+- **System Sounds**: Only the 14 official macOS sounds are allowed
+- **Text-to-Speech**: 
+  - Text limited to 1000 characters maximum
+  - Voice validation with graceful fallback to system default
+  - Curated list of 43+ supported voices for security
+- **File Playback**: Requires absolute paths and validates file existence
+
 ### 🔗 Integration with MCP Clients
 
 This server can be integrated with any MCP-compatible client, such as:
@@ -90,11 +172,39 @@ This server can be integrated with any MCP-compatible client, such as:
 - 🛠️ Custom MCP clients
 - 🧠 AI assistants that support MCP
 
-Example tool call:
+#### MCP Configuration Example
+
+Add this to your MCP client configuration:
+
+```json
+{
+  "mcp-make-sound": {
+    "command": "node",
+    "args": [
+      "/Users/nocoo/Workspace/mcp-make-sound/dist/index.js"
+    ],
+    "env": {},
+    "working_directory": "/Users/nocoo/Workspace/mcp-make-sound",
+    "start_on_launch": true
+  }
+}
+```
+
+Example tool calls:
 ```json
 {
   "name": "play_info_sound",
   "arguments": {}
+}
+```
+
+```json
+{
+  "name": "play_sound",
+  "arguments": {
+    "type": "system",
+    "name": "Hero"
+  }
 }
 ```
 
@@ -121,23 +231,26 @@ mcp-make-sound/
 ### ⚙️ How It Works
 
 1. The server implements the MCP protocol using the official SDK
-2. It exposes three tools for different sound types
-3. When a tool is called, it uses macOS's `afplay` command to play system sounds
-4. Sounds are located in `/System/Library/Sounds/`
+2. It exposes four tools for different sound capabilities
+3. When a tool is called, it uses macOS commands:
+   - `afplay` for audio file playback (system sounds and custom files)
+   - `say` for text-to-speech synthesis
+4. System sounds are located in `/System/Library/Sounds/`
 5. The server communicates over stdio transport
 
 ## 🔧 Technical Details
 
 - **🔌 Transport**: Standard I/O (stdio)
 - **📡 Protocol**: Model Context Protocol (MCP)
-- **🎧 Audio Backend**: macOS `afplay` command
-- **🎵 Sound Files**: System .aiff files
+- **🎧 Audio Backend**: macOS `afplay` and `say` commands
+- **🎵 Sound Files**: System .aiff files, custom audio files, and synthesized speech
 
 ## 🚨 Error Handling
 
 The server includes comprehensive error handling:
-- Validates tool names
-- Handles `afplay` command failures
+- Validates tool names and parameters
+- Handles `afplay` and `say` command failures
+- Validates required parameters for each sound type
 - Returns appropriate error messages to clients
 - Graceful server shutdown on errors
 
@@ -149,11 +262,17 @@ MIT License
 
 Contributions are welcome! Please feel free to submit a Pull Request.
 
-## 🎼 System Sounds Used
+## 🎼 Sound Capabilities
 
+### Simple Methods (Legacy)
 - **🔔 Info**: Glass.aiff - A pleasant chime sound
 - **⚠️ Warning**: Purr.aiff - A gentle alert sound  
 - **❌ Error**: Sosumi.aiff - A distinctive error sound
 
-These sounds are built into macOS and provide familiar audio feedback to users.
+### Advanced Method (play_sound)
+- **🎵 14 System Sounds**: All built-in macOS sounds available
+- **🗣️ 50+ TTS Voices**: Multiple languages and character voices
+- **📁 Custom Files**: Support for .aiff, .wav, .mp3, .m4a, and more
+
+These capabilities provide rich audio feedback options for any application need.
 
