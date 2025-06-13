@@ -29,7 +29,7 @@ class MockChildProcess extends EventEmitter {
   stdout = new EventEmitter();
   stderr = new EventEmitter();
   
-  once(event: string, callback: Function): this {
+  once(event: string, callback: (...args: unknown[]) => void): this {
     super.once(event, callback);
     return this;
   }
