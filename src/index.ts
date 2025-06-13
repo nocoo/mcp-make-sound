@@ -186,43 +186,31 @@ server.setRequestHandler(ListToolsRequestSchema, async () => {
         description: 'Play various types of sounds with customizable parameters',
         inputSchema: {
           type: 'object',
-          oneOf: [
-            {
-              required: ['type', 'name'],
-              properties: {
-                type: { const: 'system' },
-                name: {
-                  type: 'string',
-                  enum: ['Basso', 'Blow', 'Bottle', 'Frog', 'Funk', 'Glass', 'Hero', 'Morse', 'Ping', 'Pop', 'Purr', 'Sosumi', 'Submarine', 'Tink'],
-                  description: 'System sound name'
-                }
-              }
+          required: ['type'],
+          properties: {
+            type: {
+              type: 'string',
+              enum: ['system', 'tts', 'file'],
+              description: 'Type of sound to play'
             },
-            {
-              required: ['type', 'text'],
-              properties: {
-                type: { const: 'tts' },
-                text: {
-                  type: 'string',
-                  description: 'Text to speak'
-                },
-                voice: {
-                  type: 'string',
-                  description: 'Voice name (optional, uses system default if not specified)'
-                }
-              }
+            name: {
+              type: 'string',
+              enum: ['Basso', 'Blow', 'Bottle', 'Frog', 'Funk', 'Glass', 'Hero', 'Morse', 'Ping', 'Pop', 'Purr', 'Sosumi', 'Submarine', 'Tink'],
+              description: 'System sound name (required when type is "system")'
             },
-            {
-              required: ['type', 'path'],
-              properties: {
-                type: { const: 'file' },
-                path: {
-                  type: 'string',
-                  description: 'Absolute path to audio file'
-                }
-              }
+            text: {
+              type: 'string',
+              description: 'Text to speak (required when type is "tts")'
+            },
+            voice: {
+              type: 'string',
+              description: 'Voice name (optional, used with type "tts", uses system default if not specified)'
+            },
+            path: {
+              type: 'string',
+              description: 'Absolute path to audio file (required when type is "file")'
             }
-          ],
+          },
           additionalProperties: false
         },
       },
@@ -269,6 +257,30 @@ server.setRequestHandler(CallToolRequestSchema, async (request) => {
         };
 
       case 'play_sound': {
+        // Validate args exists
+        if (!args || typeof args !== 'object') {
+          throw new Error('Invalid arguments provided');
+        }
+        
+        // Validate required parameters based on type
+        const { type } = args as { type?: string };
+        
+        if (!type || !['system', 'tts', 'file'].includes(type)) {
+          throw new Error('Invalid or missing type. Must be "system", "tts", or "file"');
+        }
+        
+        if (type === 'system' && !(args as any).name) {
+          throw new Error('Parameter "name" is required when type is "system"');
+        }
+        
+        if (type === 'tts' && !(args as any).text) {
+          throw new Error('Parameter "text" is required when type is "tts"');
+        }
+        
+        if (type === 'file' && !(args as any).path) {
+          throw new Error('Parameter "path" is required when type is "file"');
+        }
+        
         const soundOptions = args as PlaySoundOptions;
         const result = await playCustomSound(soundOptions);
         return {
