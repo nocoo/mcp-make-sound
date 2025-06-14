@@ -33,6 +33,53 @@ const ALLOWED_TTS_VOICES = new Set([
 ]);
 
 const MAX_TTS_TEXT_LENGTH = 1000;
+const PROCESS_TIMEOUT_MS = 10000; // 10 seconds
+
+// Request throttling
+const activeRequests = new Set<string>();
+
+// File cache with eviction strategy
+interface CacheEntry {
+  stats: any;
+  timestamp: number;
+  lastAccessed: number;
+}
+
+const fileStatCache = new Map<string, CacheEntry>();
+const FILE_CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 100; // Maximum number of cached entries
+
+// Cache cleanup interval (runs every 5 minutes)
+const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000;
+
+function cleanupCache(): void {
+  const now = Date.now();
+  const entries = Array.from(fileStatCache.entries());
+  
+  // Remove expired entries
+  let removed = 0;
+  for (const [key, entry] of entries) {
+    if (now - entry.timestamp > FILE_CACHE_TTL) {
+      fileStatCache.delete(key);
+      removed++;
+    }
+  }
+  
+  // If still over limit, remove LRU entries
+  if (fileStatCache.size > MAX_CACHE_SIZE) {
+    const sortedEntries = Array.from(fileStatCache.entries())
+      .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+    
+    const toRemove = fileStatCache.size - MAX_CACHE_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      fileStatCache.delete(sortedEntries[i][0]);
+      removed++;
+    }
+  }
+}
+
+// Set up periodic cache cleanup
+setInterval(cleanupCache, CACHE_CLEANUP_INTERVAL);
 
 const server = new Server(
   {
@@ -47,108 +94,183 @@ const server = new Server(
 );
 
 async function playSound(soundType: 'info' | 'warning' | 'error'): Promise<void> {
-  return new Promise((resolve, reject) => {
-    let soundName: string;
-    
-    switch (soundType) {
-      case 'info':
-        soundName = 'Glass';
-        break;
-      case 'warning':
-        soundName = 'Purr';
-        break;
-      case 'error':
-        soundName = 'Sosumi';
-        break;
-      default:
-        soundName = 'Glass';
-    }
-
-    const afplay = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
-    
-    afplay.once('close', (code) => {
-      if (code === 0) {
-        resolve();
-      } else {
-        reject(new Error(`Sound playback failed with code ${code}`));
+  const requestId = `${soundType}-${Date.now()}`;
+  
+  // Throttle requests to prevent conflicts
+  if (activeRequests.has(soundType)) {
+    throw new Error(`${soundType} sound already playing`);
+  }
+  
+  activeRequests.add(soundType);
+  
+  try {
+    return new Promise((resolve, reject) => {
+      let soundName: string;
+      
+      switch (soundType) {
+        case 'info':
+          soundName = 'Glass';
+          break;
+        case 'warning':
+          soundName = 'Purr';
+          break;
+        case 'error':
+          soundName = 'Sosumi';
+          break;
+        default:
+          soundName = 'Glass';
       }
+
+      const afplay = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
+      
+      // Add timeout
+      const timeout = setTimeout(() => {
+        afplay.kill();
+        reject(new Error('Sound playback timed out'));
+      }, PROCESS_TIMEOUT_MS);
+      
+      afplay.once('close', (code) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve();
+        } else {
+          reject(new Error(`Sound playback failed with code ${code}`));
+        }
+      });
+      
+      afplay.once('error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
     });
+  } finally {
+    activeRequests.delete(soundType);
+  }
+}
+
+async function getCachedFileStat(filePath: string): Promise<any> {
+  const now = Date.now();
+  const cached = fileStatCache.get(filePath);
+  
+  if (cached && (now - cached.timestamp) < FILE_CACHE_TTL) {
+    // Update last accessed time for LRU
+    cached.lastAccessed = now;
+    return cached.stats;
+  }
+  
+  try {
+    const stats = await stat(filePath);
     
-    afplay.once('error', reject);
-  });
+    // Clean up cache if it's getting too large before adding new entry
+    if (fileStatCache.size >= MAX_CACHE_SIZE) {
+      cleanupCache();
+    }
+    
+    fileStatCache.set(filePath, { 
+      stats, 
+      timestamp: now, 
+      lastAccessed: now 
+    });
+    return stats;
+  } catch (error) {
+    fileStatCache.delete(filePath);
+    throw error;
+  }
 }
 
 async function playCustomSound(options: PlaySoundOptions): Promise<string> {
-  let child: ReturnType<typeof spawn>;
+  const requestId = `${options.type}-${Date.now()}`;
   
-  // Validate and spawn process
-  switch (options.type) {
-    case 'system': {
-      const { name: soundName } = options;
-      if (!ALLOWED_SYSTEM_SOUNDS.has(soundName)) {
-        throw new Error(`Unsupported system sound: ${soundName}`);
-      }
-      child = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
-      break;
-    }
-      
-    case 'tts': {
-      const { text, voice } = options;
-      
-      // Validate text length
-      if (text.length > MAX_TTS_TEXT_LENGTH) {
-        throw new Error(`Text too long (max ${MAX_TTS_TEXT_LENGTH} characters)`);
-      }
-      
-      // Validate voice if provided, gracefully fall back to system default
-      let finalVoice = voice;
-      if (voice !== undefined && !ALLOWED_TTS_VOICES.has(voice)) {
-        // Log warning but continue with system default
-        console.warn(`Unsupported voice: ${voice}. Using system default voice.`);
-        finalVoice = undefined;
-      }
-      
-      const args = finalVoice ? ['-v', finalVoice, text] : [text];
-      child = spawn('say', args);
-      break;
-    }
-      
-    case 'file': {
-      const { path: filePath } = options;
-      if (!isAbsolute(filePath)) {
-        throw new Error('File path must be absolute');
-      }
-      try {
-        const stats = await stat(filePath);
-        if (!stats.isFile()) {
-          throw new Error('Path must point to a file');
-        }
-      } catch (error) {
-        throw new Error(`File not found or inaccessible: ${filePath}`);
-      }
-      child = spawn('afplay', [filePath]);
-      break;
-    }
-      
-    default: {
-      // TypeScript ensures this is unreachable, but keep for runtime safety
-      const exhaustiveCheck: never = options;
-      throw new Error(`Unknown sound type: ${(exhaustiveCheck as any).type}`);
-    }
+  // Throttle same type requests
+  if (activeRequests.has(options.type)) {
+    throw new Error(`${options.type} sound already playing`);
   }
   
-  // Wrap child process lifecycle in Promise
-  return new Promise((resolve, reject) => {
-    child.once('close', (code: number) => {
-      if (code === 0) {
-        resolve(`${options.type} sound played successfully`);
-      } else {
-        reject(new Error(`Sound playback failed with code ${code}`));
-      }
-    });
+  activeRequests.add(options.type);
+  
+  try {
+    let child: ReturnType<typeof spawn>;
     
-    child.once('error', reject);
-  });
+    // Validate and spawn process
+    switch (options.type) {
+      case 'system': {
+        const { name: soundName } = options;
+        if (!ALLOWED_SYSTEM_SOUNDS.has(soundName)) {
+          throw new Error(`Unsupported system sound: ${soundName}`);
+        }
+        child = spawn('afplay', [`/System/Library/Sounds/${soundName}.aiff`]);
+        break;
+      }
+        
+      case 'tts': {
+        const { text, voice } = options;
+        
+        // Validate text length
+        if (text.length > MAX_TTS_TEXT_LENGTH) {
+          throw new Error(`Text too long (max ${MAX_TTS_TEXT_LENGTH} characters)`);
+        }
+        
+        // Validate voice if provided, gracefully fall back to system default
+        let finalVoice = voice;
+        if (voice !== undefined && !ALLOWED_TTS_VOICES.has(voice)) {
+          // Log warning but continue with system default
+          console.warn(`Unsupported voice: ${voice}. Using system default voice.`);
+          finalVoice = undefined;
+        }
+        
+        const args = finalVoice ? ['-v', finalVoice, text] : [text];
+        child = spawn('say', args);
+        break;
+      }
+        
+      case 'file': {
+        const { path: filePath } = options;
+        if (!isAbsolute(filePath)) {
+          throw new Error('File path must be absolute');
+        }
+        try {
+          const stats = await getCachedFileStat(filePath);
+          if (!stats.isFile()) {
+            throw new Error('Path must point to a file');
+          }
+        } catch (error) {
+          throw new Error(`File not found or inaccessible: ${filePath}`);
+        }
+        child = spawn('afplay', [filePath]);
+        break;
+      }
+        
+      default: {
+        // TypeScript ensures this is unreachable, but keep for runtime safety
+        const exhaustiveCheck: never = options;
+        throw new Error(`Unknown sound type: ${(exhaustiveCheck as any).type}`);
+      }
+    }
+    
+    // Wrap child process lifecycle in Promise with timeout
+    return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        child.kill();
+        reject(new Error('Sound playback timed out'));
+      }, PROCESS_TIMEOUT_MS);
+      
+      child.once('close', (code: number) => {
+        clearTimeout(timeout);
+        if (code === 0) {
+          resolve(`${options.type} sound played successfully`);
+        } else {
+          reject(new Error(`Sound playback failed with code ${code}`));
+        }
+      });
+      
+      child.once('error', (error) => {
+        clearTimeout(timeout);
+        reject(error);
+      });
+    });
+  } finally {
+    activeRequests.delete(options.type);
+  }
 }
 
 server.setRequestHandler(ListToolsRequestSchema, async () => {
