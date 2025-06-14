@@ -37,8 +37,49 @@ const PROCESS_TIMEOUT_MS = 10000; // 10 seconds
 
 // Request throttling
 const activeRequests = new Set<string>();
-const fileStatCache = new Map<string, { stats: any; timestamp: number }>();
+
+// File cache with eviction strategy
+interface CacheEntry {
+  stats: any;
+  timestamp: number;
+  lastAccessed: number;
+}
+
+const fileStatCache = new Map<string, CacheEntry>();
 const FILE_CACHE_TTL = 60000; // 1 minute
+const MAX_CACHE_SIZE = 100; // Maximum number of cached entries
+
+// Cache cleanup interval (runs every 5 minutes)
+const CACHE_CLEANUP_INTERVAL = 5 * 60 * 1000;
+
+function cleanupCache(): void {
+  const now = Date.now();
+  const entries = Array.from(fileStatCache.entries());
+  
+  // Remove expired entries
+  let removed = 0;
+  for (const [key, entry] of entries) {
+    if (now - entry.timestamp > FILE_CACHE_TTL) {
+      fileStatCache.delete(key);
+      removed++;
+    }
+  }
+  
+  // If still over limit, remove LRU entries
+  if (fileStatCache.size > MAX_CACHE_SIZE) {
+    const sortedEntries = Array.from(fileStatCache.entries())
+      .sort((a, b) => a[1].lastAccessed - b[1].lastAccessed);
+    
+    const toRemove = fileStatCache.size - MAX_CACHE_SIZE;
+    for (let i = 0; i < toRemove; i++) {
+      fileStatCache.delete(sortedEntries[i][0]);
+      removed++;
+    }
+  }
+}
+
+// Set up periodic cache cleanup
+setInterval(cleanupCache, CACHE_CLEANUP_INTERVAL);
 
 const server = new Server(
   {
@@ -112,12 +153,24 @@ async function getCachedFileStat(filePath: string): Promise<any> {
   const cached = fileStatCache.get(filePath);
   
   if (cached && (now - cached.timestamp) < FILE_CACHE_TTL) {
+    // Update last accessed time for LRU
+    cached.lastAccessed = now;
     return cached.stats;
   }
   
   try {
     const stats = await stat(filePath);
-    fileStatCache.set(filePath, { stats, timestamp: now });
+    
+    // Clean up cache if it's getting too large before adding new entry
+    if (fileStatCache.size >= MAX_CACHE_SIZE) {
+      cleanupCache();
+    }
+    
+    fileStatCache.set(filePath, { 
+      stats, 
+      timestamp: now, 
+      lastAccessed: now 
+    });
     return stats;
   } catch (error) {
     fileStatCache.delete(filePath);
