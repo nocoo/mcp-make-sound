@@ -1,0 +1,4 @@
+[[IgnoredPackages]]
+# Add packages to ignore here if needed
+# name = "example-package"
+# reason = "false positive"
