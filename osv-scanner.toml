@@ -1,4 +1,5 @@
-[[IgnoredPackages]]
-# Add packages to ignore here if needed
-# name = "example-package"
+# OSV Scanner configuration
+# Add vulnerability ignores here if needed
+# [[IgnoredVulns]]
+# id = "GHSA-xxxx-xxxx-xxxx"
 # reason = "false positive"
